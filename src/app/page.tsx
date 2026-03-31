@@ -1,65 +1,72 @@
-"use client"
+"use client";
 
-import { useEffect, useMemo, useState } from "react"
-import { supabase } from "@/lib/supabase"
-import AiDraftModal from "@/components/AiDraftModal"
-import StatCard from "@/components/dashboard/StatCard"
-import ClientCard from "@/components/dashboard/ClientCard"
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import AiDraftModal from "@/components/shared/AiDraftModal";
+import StatCard from "@/components/dashboard/StatCard";
+import ClientCard from "@/components/dashboard/ClientCard";
 
 type Client = {
-  id: string
-  business_name: string
-  contact_name: string | null
-  email: string | null
-}
+  id: string;
+  business_name: string;
+  contact_name: string | null;
+  email: string | null;
+};
 
 type IntelligenceScoreRow = {
-  client_id: string
-  score: number | null
-}
+  client_id: string;
+  score: number | null;
+};
+
+type DraftTarget = {
+  clientName: string;
+  businessName: string;
+  score: number;
+} | null;
 
 export default function Home() {
-  const [clients, setClients] = useState<Client[]>([])
-  const [scores, setScores] = useState<Record<string, number | null>>({})
-  const [loading, setLoading] = useState(true)
-  const [selectedClient, setSelectedClient] = useState<string | null>(null)
+  const [clients, setClients] = useState<Client[]>([]);
+  const [scores, setScores] = useState<Record<string, number | null>>({});
+  const [loading, setLoading] = useState(true);
+  const [draftTarget, setDraftTarget] = useState<DraftTarget>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      setLoading(true)
+      setLoading(true);
 
-      const [{ data: clientsData, error: clientsError }, { data: scoresData, error: scoresError }] =
-        await Promise.all([
-          supabase.from("clients").select("id, business_name, contact_name, email"),
-          supabase.from("intelligence_scores").select("client_id, score"),
-        ])
+      const [
+        { data: clientsData, error: clientsError },
+        { data: scoresData, error: scoresError },
+      ] = await Promise.all([
+        supabase.from("clients").select("id, business_name, contact_name, email"),
+        supabase.from("intelligence_scores").select("client_id, score"),
+      ]);
 
       if (clientsError) {
-        console.error("Clients error:", clientsError)
+        console.error("Clients error:", clientsError);
       }
 
       if (scoresError) {
-        console.error("Scores error:", scoresError)
+        console.error("Scores error:", scoresError);
       }
 
-      setClients((clientsData as Client[]) ?? [])
+      setClients((clientsData as Client[]) ?? []);
 
-      const scoreMap: Record<string, number | null> = {}
-      ;((scoresData as IntelligenceScoreRow[]) ?? []).forEach((row) => {
-        scoreMap[row.client_id] = row.score
-      })
-      setScores(scoreMap)
+      const scoreMap: Record<string, number | null> = {};
+      ((scoresData as IntelligenceScoreRow[]) ?? []).forEach((row) => {
+        scoreMap[row.client_id] = row.score;
+      });
+      setScores(scoreMap);
 
-      setLoading(false)
-    }
+      setLoading(false);
+    };
 
-    fetchDashboardData()
-  }, [])
+    fetchDashboardData();
+  }, []);
 
-  // 📊 Stats
   const stats = useMemo(() => {
-    const totalClients = clients.length
-    const activeClients = clients.length
+    const totalClients = clients.length;
+    const activeClients = clients.length;
 
     const averageScore =
       clients.length > 0
@@ -67,23 +74,34 @@ export default function Home() {
             clients.reduce((sum, client) => sum + (scores[client.id] ?? 0), 0) /
               clients.length
           )
-        : 0
+        : 0;
 
     const highPriority = clients.filter(
       (client) => (scores[client.id] ?? 0) < 80
-    ).length
+    ).length;
 
     return {
       totalClients,
       activeClients,
       averageScore,
       highPriority,
-    }
-  }, [clients, scores])
+    };
+  }, [clients, scores]);
+
+  const handleAiDraft = (
+    clientName: string,
+    businessName: string,
+    score: number
+  ) => {
+    setDraftTarget({
+      clientName,
+      businessName,
+      score,
+    });
+  };
 
   return (
-    <main className="min-h-screen bg-black text-white p-8">
-      {/* HEADER */}
+    <main className="min-h-screen bg-black p-8 text-white">
       <div className="mb-10">
         <p className="mb-2 text-xs tracking-[0.3em] text-emerald-400">
           INVESTOR DEMO PREVIEW
@@ -94,7 +112,6 @@ export default function Home() {
         </p>
       </div>
 
-      {/* STATS */}
       <div className="mb-10 grid grid-cols-1 gap-6 md:grid-cols-4">
         <StatCard label="Total Clients" value={stats.totalClients} />
         <StatCard label="Active Clients" value={stats.activeClients} />
@@ -102,7 +119,6 @@ export default function Home() {
         <StatCard label="Needs Attention" value={stats.highPriority} />
       </div>
 
-      {/* CLIENTS */}
       <h2 className="mb-4 text-xl font-semibold">Clients</h2>
 
       {loading ? (
@@ -116,18 +132,19 @@ export default function Home() {
               key={client.id}
               client={client}
               score={scores[client.id] ?? 0}
-              onOpenDraft={setSelectedClient}
+              onAiDraft={handleAiDraft}
             />
           ))}
         </div>
       )}
 
-      {/* AI MODAL */}
       <AiDraftModal
-        open={selectedClient !== null}
-        clientName={selectedClient || ""}
-        onClose={() => setSelectedClient(null)}
+        open={draftTarget !== null}
+        onClose={() => setDraftTarget(null)}
+        clientName={draftTarget?.clientName ?? ""}
+        businessName={draftTarget?.businessName ?? ""}
+        score={draftTarget?.score ?? 80}
       />
     </main>
-  )
+  );
 }

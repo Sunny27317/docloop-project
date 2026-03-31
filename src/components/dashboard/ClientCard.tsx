@@ -1,20 +1,22 @@
-import IntelligenceScore from "@/components/shared/IntelligenceScore"
+"use client";
+
+type Client = {
+  id: string;
+  business_name: string;
+  contact_name: string | null;
+  email: string | null;
+};
 
 type ClientCardProps = {
-  client: {
-    id: string
-    business_name: string
-    contact_name: string | null
-    email: string | null
-  }
-  score: number
-  onOpenDraft: (name: string) => void
-}
+  client: Client;
+  score: number;
+  onAiDraft: (clientName: string, businessName: string, score: number) => void;
+};
 
 export default function ClientCard({
   client,
   score,
-  onOpenDraft,
+  onAiDraft,
 }: ClientCardProps) {
   return (
     <div className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-lg">
@@ -27,7 +29,9 @@ export default function ClientCard({
       </p>
 
       <div className="mb-4">
-        <IntelligenceScore score={score} />
+        <span className="rounded-full bg-yellow-500/20 px-3 py-1 text-xs text-yellow-300">
+          Intelligence Score: {score}
+        </span>
       </div>
 
       <div className="flex items-center justify-between">
@@ -35,7 +39,11 @@ export default function ClientCard({
 
         <button
           onClick={() =>
-            onOpenDraft(client.contact_name || client.business_name)
+            onAiDraft(
+              client.contact_name || client.business_name,
+              client.business_name,
+              score
+            )
           }
           className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400"
         >
@@ -43,5 +51,5 @@ export default function ClientCard({
         </button>
       </div>
     </div>
-  )
+  );
 }
